@@ -1,5 +1,7 @@
-from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QDialog, QLineEdit, QFormLayout, QPushButton, QGroupBox
+from PyQt5.QtCore import QSettings, QDir
+from PyQt5.QtWidgets import QDialog, QLineEdit, QFormLayout, QPushButton, QGroupBox, QCheckBox
+import random
+import string
 
 from GUI import SpinBox, HLayout, VLayout
 
@@ -10,7 +12,7 @@ class BrokerDialog(QDialog):
 
         self.setWindowTitle("MQTT Broker")
 
-        self.settings = QSettings()
+        self.settings = QSettings("{}/TDM/tdm.cfg".format(QDir.homePath()), QSettings.IniFormat)
 
         gbHost = QGroupBox("Hostname and port")
         hfl = QFormLayout()
@@ -33,13 +35,23 @@ class BrokerDialog(QDialog):
         lfl.addRow("Password", self.password)
         gbLogin.setLayout(lfl)
 
+        gbClientId = QGroupBox("Client ID [optional]")
+        cfl = QFormLayout()
+        self.clientId = QLineEdit()
+        self.clientId.setText(self.settings.value("client_id", "tdm-" + self.random_generator()))
+        cfl.addRow("Client ID", self.clientId)
+        gbClientId.setLayout(cfl)
+
+        self.cbConnectStartup = QCheckBox("Connect on startup")
+        self.cbConnectStartup.setChecked(self.settings.value("connect_on_startup", False, bool))
+
         hlBtn = HLayout()
         btnSave = QPushButton("Save")
         btnCancel = QPushButton("Cancel")
         hlBtn.addWidgets([btnSave, btnCancel])
 
         vl = VLayout()
-        vl.addWidgets([gbHost, gbLogin])
+        vl.addWidgets([gbHost, gbLogin, self.cbConnectStartup])
         vl.addLayout(hlBtn)
 
         self.setLayout(vl)
@@ -52,5 +64,12 @@ class BrokerDialog(QDialog):
         self.settings.setValue("port", self.port.value())
         self.settings.setValue("username", self.username.text())
         self.settings.setValue("password", self.password.text())
+        self.settings.setValue("connect_on_startup", self.cbConnectStartup.isChecked())
+        # self.settings.setValue("client_id", self.clientId.text())
         self.settings.sync()
         self.done(QDialog.Accepted)
+
+    ##################################################################
+    # utils
+    def random_generator(self, size=6, chars=string.ascii_uppercase + string.digits):
+        return ''.join(random.choice(chars) for x in range(size))
